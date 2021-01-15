@@ -6,18 +6,35 @@ using System.Threading.Tasks;
 
 namespace TankGame
 {
-	class Tank
+	interface ITank
+	{
+		int Armor { get; set; }
+		float Damage { get; set; }
+		NaturalNumber Ammo { get; set; }
+		NaturalNumber Health { get; set; }
+
+		void Shoot(ITank tank);
+		void TakeDamage(float damage);
+		void Repair(int healthAmount);
+		void BuyAmmo(int ammoAmount);
+		void WriteInfo();
+	}
+
+	 
+
+	class Tank : ITank
 	{
 		readonly TankTypes TankType;
-		int Armor;
-		readonly float Damage;
-		NaturalNumber Ammo;
-		public readonly NaturalNumber Health;
+		
+		public int Armor { get; set; }
+		public float Damage { get; set; }
+		public NaturalNumber Ammo { get; set; }
+		public NaturalNumber Health { get; set; }
 
 		public bool IsAlive => !Health.IsZero;
-		
 
-		public void Shoot(Tank enemy)
+
+		public void Shoot(ITank enemy)
 		{
 			// Создание исходного сообщения
 			var message = $"Произведён выстрел на {Damage} урона.\n";
@@ -56,7 +73,7 @@ namespace TankGame
 			Console.WriteLine(message);
 		}
 		// Метод получения урона с учётом брони
-		void TakeDamage(float damage)
+		public void TakeDamage(float damage)
 		{
 			// Броня сокращает урон вдвое
 			if (Armor > 0 && damage != 0)
@@ -68,6 +85,25 @@ namespace TankGame
 			// Перевод Float -> Int приближает к ЧЁТНОМУ целому числу
 			// Для лучшей точности добавлен Math.Round
 			Health.Subtract(Convert.ToInt32(Math.Round(damage)));
+		}
+
+		public void Repair(int healthAmount)
+		{
+			Health.Add(healthAmount);
+			if (Health.IsMax)
+			{
+				Console.WriteLine("Произведена 100 %-ная починка.");
+			}
+			else
+			{
+				Console.WriteLine($"Произведена починка на {healthAmount} единиц.");
+			}
+		}
+		//Починка без конкретного количества восстанавливает 1/8 максимального здоровья
+		public void Repair()
+		{
+			int healthAmount = (Health.Max / 8).Clamp(1, Health.Max);
+			Repair(healthAmount);
 		}
 
 		public void BuyAmmo(int ammoAmount)
@@ -86,24 +122,7 @@ namespace TankGame
 			BuyAmmo(ammoAmount);
 		}
 
-		public void Repair(int amount)
-		{
-			Health.Add(amount);
-			if (Health.IsMax)
-			{
-				Console.WriteLine("Произведена 100 %-ная починка.");
-			}	
-			else
-			{
-				Console.WriteLine($"Произведена починка на {amount} единиц.");
-			}
-		}
-		//Починка без конкретного количества восстанавливает 1/8 максимального здоровья
-		public void Repair()
-		{
-			int healthAmount = (Health.Max / 8).Clamp(1, Health.Max);
-			Repair(healthAmount);
-		}
+		
 
 		public void WriteInfo()
 		{
@@ -261,7 +280,7 @@ namespace TankGame
 			{
 				Console.WriteLine("Случай сыграл с Вами в злую шутку, ничья...");
 			}
-			else if (enemy.Health.IsZero)
+			else if (player.Health.IsZero)
 			{
 				Console.WriteLine("К сожалению, Вы проиграли...");
 			}
