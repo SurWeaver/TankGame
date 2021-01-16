@@ -20,6 +20,11 @@ namespace TankGame
 		void WriteInfo();
 	}
 
+	interface IComputer
+	{
+		void ComputerTurn(ITank opponent);
+	}
+
 	 
 
 	class Tank : ITank
@@ -34,7 +39,7 @@ namespace TankGame
 		public bool IsAlive => !Health.IsZero;
 
 
-		public void Shoot(ITank enemy)
+		public void Shoot(ITank opponent)
 		{
 			// Создание исходного сообщения
 			var message = $"Произведён выстрел на {Damage} урона.\n";
@@ -67,8 +72,8 @@ namespace TankGame
 				{
 					currentDamage = 0;
 					message = $"Произведён тактический промах с целью запугивания.\n";
-				}	
-				enemy.TakeDamage(currentDamage);
+				}
+				opponent.TakeDamage(currentDamage);
 			}
 			Console.WriteLine(message);
 		}
@@ -286,7 +291,7 @@ namespace TankGame
 			}
 			else
 			{
-				Console.WriteLine("Фух, победа! Теперь можете насладиться этим смайликом -> ☺");
+				Console.WriteLine("Фух, победа! Можете отдохнуть!");
 			}
 			Console.ReadLine();
 		}
