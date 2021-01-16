@@ -13,7 +13,7 @@ namespace TankGame
 		NaturalNumber Ammo { get; set; }
 		NaturalNumber Health { get; set; }
 
-		void Shoot(ITank tank);
+		void Shoot(ITank opponent);
 		void TakeDamage(float damage);
 		void Repair(int healthAmount);
 		void BuyAmmo(int ammoAmount);
@@ -24,7 +24,6 @@ namespace TankGame
 	{
 		void ComputerTurn(ITank opponent);
 	}
-
 	 
 
 	class Tank : ITank
@@ -35,8 +34,6 @@ namespace TankGame
 		public float Damage { get; set; }
 		public NaturalNumber Ammo { get; set; }
 		public NaturalNumber Health { get; set; }
-
-		public bool IsAlive => !Health.IsZero;
 
 
 		public void Shoot(ITank opponent)
@@ -73,9 +70,9 @@ namespace TankGame
 					currentDamage = 0;
 					message = $"Произведён тактический промах с целью запугивания.\n";
 				}
+				Console.WriteLine(message);
 				opponent.TakeDamage(currentDamage);
 			}
-			Console.WriteLine(message);
 		}
 		// Метод получения урона с учётом брони
 		public void TakeDamage(float damage)
@@ -127,7 +124,6 @@ namespace TankGame
 			BuyAmmo(ammoAmount);
 		}
 
-		
 
 		public void WriteInfo()
 		{
@@ -148,6 +144,151 @@ namespace TankGame
 			Health = (NaturalNumber)health;
 		}
 	}
+
+
+
+	class MyTank : ITank
+	{
+		public int Armor { get; set; }
+		public float Damage { get; set; }
+		public NaturalNumber Ammo { get; set; }
+		public NaturalNumber Health { get; set; }
+
+		int AmmoToBuy;
+		int HealthToHeal;
+
+		public void BuyAmmo(int ammoAmount)
+		{
+			//Подсчёт 
+			int boughtAmmo = ammoAmount;
+			if (ammoAmount + Ammo > Ammo.Max)
+			{
+				boughtAmmo = Ammo.Max - Ammo;
+			}
+
+			Ammo.Add(ammoAmount);
+			Console.WriteLine($"Было закуплено {boughtAmmo} патронов.");
+		}
+		public void BuyAmmo()
+		{
+			BuyAmmo(AmmoToBuy);
+		}
+		public void Repair(int healthAmount)
+		{
+			int healedHealth = healthAmount;
+			if (healthAmount + Health > Health.Max)
+			{
+				healedHealth = Health.Max - Health;
+			}
+			Health.Add(healthAmount);
+			Console.WriteLine($"Произведена починка на {healedHealth} единиц.");
+		}
+		public void Repair()
+		{
+			Repair(HealthToHeal);
+		}
+
+		public void Shoot(ITank opponent)
+		{
+			if (Ammo.IsZero)
+			{
+				BuyAmmo();
+				return;
+			}
+			else
+			{
+				Ammo.Subtract(1);
+				Random r = new Random();
+				double shootChance = r.NextDouble();
+				float currentDamage = Damage;
+				var message = "Был произведён выстрел.";
+				// Шанс критического выстрела
+				if (shootChance <= 0.1)
+				{
+					currentDamage *= 1.2f;
+					message = "Был произведён критический выстрел.";
+				}
+				// Шанс промаха
+				else if (shootChance <= 0.3)
+				{
+					currentDamage = 0;
+					message = "Случился промах.";
+				}
+				Console.WriteLine(message);
+
+				opponent.TakeDamage(currentDamage);
+
+			}
+		}
+
+		public void TakeDamage(float damage)
+		{
+			if (damage == 0)
+				return;
+
+			var message = $"Было нанесено ";
+			if (Armor > 0)
+			{
+				Armor--;
+				damage *= 0.8f;
+				message = $"Броня теряет прочность, было нанесено ";
+			}
+
+			int currentDamage = Convert.ToInt32(Math.Round(damage));
+			Health.Subtract(currentDamage);
+
+			message += $"{currentDamage} единиц урона.";
+			Console.WriteLine(message);
+		}
+
+		public void WriteInfo()
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.Append($"Здоровье: {(int)Health}/{Health.Max}\n");
+			if (Armor > 0)
+				sb.Append($"Броня: {Armor}\n");
+			sb.Append($"Количество патронов: {(int)Ammo}/{Ammo.Max}\n");
+
+			Console.WriteLine(sb.ToString());
+		}
+
+		public MyTank(int armor, int damage, int ammo, int health, int ammoToBuy, int healthToHeal)
+		{
+			Armor = armor;
+			Damage = damage;
+			Ammo = (NaturalNumber)ammo;
+			Health = (NaturalNumber)health;
+			AmmoToBuy = ammoToBuy;
+			HealthToHeal = healthToHeal;
+		}
+	}
+	
+	class ComputerTank : MyTank, IComputer
+	{
+		public void ComputerTurn(ITank opponent)
+		{
+			if (Health.IsMax)
+			{
+				Shoot(opponent);
+			}
+			else
+			{
+				Random r = new Random();
+				if (0.5f > r.NextDouble())
+				{
+					Shoot(opponent);
+				}
+				else
+				{
+					Repair();
+				}
+			}
+		}
+
+		public ComputerTank(int armor, int damage, int ammo, int health, int ammoToBuy, int healthToHeal) : base(armor, damage, ammo, health, ammoToBuy, healthToHeal)
+		{ }
+	}
+	
 	enum TankTypes
 	{
 		Player,
@@ -206,7 +347,7 @@ namespace TankGame
 
 	class Program
 	{
-		static void ShowInfoAndActions(Tank player, Tank enemy)
+		static void ShowInfoAndActions(ITank player, ITank enemy)
 		{
 			Console.WriteLine("Состояние игрока:");
 			player.WriteInfo();
@@ -244,13 +385,13 @@ namespace TankGame
 		static void Main(string[] args)
 		{
 			// Создание объектов игрока и врага 
-			Tank player = new Tank(TankTypes.Player, 5, 15, 10, 50);
-			Tank enemy = new Tank(TankTypes.Enemy, 2, 10, 5, 100);
+			MyTank player = new MyTank(5, 15, 10, 50, 3, 10);
+			ComputerTank enemy = new ComputerTank(2, 10, 5, 100, 5, 12);
 
 			Console.WriteLine("Добро пожаловать на танковый полигон, стреляйте первым!");
 
 			// Главный цикл игры
-			while (player.IsAlive && enemy.IsAlive)
+			while (!player.Health.IsZero && !enemy.Health.IsZero)
 			{
 				ShowInfoAndActions(player, enemy);
 
@@ -276,7 +417,7 @@ namespace TankGame
 						break;
 				}
 				Console.WriteLine("[ХОД СУПОСТАТА]");
-				EnemyMove(enemy, player);
+				enemy.ComputerTurn(player);
 				Console.WriteLine("Нажмите любую клавишу, чтобы продолжить.");
 				Console.ReadKey(true);
 				Console.Clear();
